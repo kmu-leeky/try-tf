@@ -2,7 +2,7 @@ import tensorflow.python.platform
 
 import numpy as np
 import tensorflow as tf
-
+import time
 # Global variables.
 NUM_LABELS = 2    # The number of labels.
 BATCH_SIZE = 100  # The number of training examples to use per training step.
@@ -90,12 +90,12 @@ def main(argv=None):
     # Define and initialize the network.
 
     # Initialize the hidden weights and biases.
-    w_hidden = init_weights(
-        [num_features, num_hidden],
-        'xavier',
-        xavier_params=(num_features, num_hidden))
-
-    b_hidden = init_weights([1,num_hidden],'zeros')
+    with tf.device("/cpu:0"):
+      w_hidden = init_weights(
+          [num_features, num_hidden],
+          'xavier',
+          xavier_params=(num_features, num_hidden))
+      b_hidden = init_weights([1,num_hidden],'zeros')
 
     # The hidden layer.
     hidden = tf.nn.tanh(tf.matmul(x,w_hidden) + b_hidden)
@@ -119,8 +119,11 @@ def main(argv=None):
     correct_prediction = tf.equal(tf.argmax(y,1), tf.argmax(y_,1))
     accuracy = tf.reduce_mean(tf.cast(correct_prediction, "float"))
 
+    saver = tf.train.Saver(tf.all_variables())
+
     # Create a local session to run this computation.
     with tf.Session() as s:
+      with tf.device("/cpu:0"):
         # Run all the initializers to prepare the trainable parameters.
     	tf.initialize_all_variables().run()
     	if verbose:
@@ -137,6 +140,10 @@ def main(argv=None):
     	    batch_data = train_data[offset:(offset + BATCH_SIZE), :]
     	    batch_labels = train_labels[offset:(offset + BATCH_SIZE)]
     	    train_step.run(feed_dict={x: batch_data, y_: batch_labels})
+            start_time = time.time()
+            saver.save(s, "/tmp/%s-simple-ckpt-model.ckpt"%num_hidden, global_step=step)
+            duration = time.time() - start_time
+            print("second per checkpoint: %s"%float(duration))
     	    if verbose and offset >= train_size-BATCH_SIZE:
     	        print
     	print "Accuracy:", accuracy.eval(feed_dict={x: test_data, y_: test_labels})
