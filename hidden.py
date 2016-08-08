@@ -5,7 +5,7 @@ import tensorflow as tf
 import time
 # Global variables.
 NUM_LABELS = 2    # The number of labels.
-BATCH_SIZE = 100  # The number of training examples to use per training step.
+BATCH_SIZE = 1  # The number of training examples to use per training step.
 
 tf.app.flags.DEFINE_string('train', None,
                            'File containing the training data (labels & features).')
@@ -90,12 +90,11 @@ def main(argv=None):
     # Define and initialize the network.
 
     # Initialize the hidden weights and biases.
-    with tf.device("/cpu:0"):
-      w_hidden = init_weights(
-          [num_features, num_hidden],
-          'xavier',
-          xavier_params=(num_features, num_hidden))
-      b_hidden = init_weights([1,num_hidden],'zeros')
+    w_hidden = init_weights(
+        [num_features, num_hidden],
+        'xavier',
+        xavier_params=(num_features, num_hidden))
+    b_hidden = init_weights([1,num_hidden],'zeros')
 
     # The hidden layer.
     hidden = tf.nn.tanh(tf.matmul(x,w_hidden) + b_hidden)
@@ -123,10 +122,10 @@ def main(argv=None):
 
     # Create a local session to run this computation.
     with tf.Session() as s:
-      with tf.device("/cpu:0"):
         # Run all the initializers to prepare the trainable parameters.
     	tf.initialize_all_variables().run()
     	if verbose:
+            print ('num epochs: %s train size %s batchsize %s'%(num_epochs, train_size, BATCH_SIZE))
     	    print 'Initialized!'
     	    print
     	    print 'Training.'
@@ -134,19 +133,26 @@ def main(argv=None):
     	# Iterate and train.
     	for step in xrange(num_epochs * train_size // BATCH_SIZE):
     	    if verbose:
-    	        print step,
+    	        print step
     	        
-    	    offset = (step * BATCH_SIZE) % train_size
-    	    batch_data = train_data[offset:(offset + BATCH_SIZE), :]
-    	    batch_labels = train_labels[offset:(offset + BATCH_SIZE)]
-    	    train_step.run(feed_dict={x: batch_data, y_: batch_labels})
+            offset = (step * BATCH_SIZE) % train_size
+            batch_data = train_data[offset:(offset + BATCH_SIZE), :]
+            batch_labels = train_labels[offset:(offset + BATCH_SIZE)]
+            train_step.run(feed_dict={x: batch_data, y_: batch_labels})
+            if verbose and offset >= train_size-BATCH_SIZE:
+                print
             start_time = time.time()
             saver.save(s, "/tmp/%s-simple-ckpt-model.ckpt"%num_hidden, global_step=step)
             duration = time.time() - start_time
             print("second per checkpoint: %s"%float(duration))
-    	    if verbose and offset >= train_size-BATCH_SIZE:
-    	        print
-    	print "Accuracy:", accuracy.eval(feed_dict={x: test_data, y_: test_labels})
-            
+            exit(0)
+"""
+        start_time = time.time()
+        saver.save(s, "/tmp/%s-simple-ckpt-model.ckpt"%num_hidden, global_step=step)
+        duration = time.time() - start_time
+        print("second per checkpoint: %s"%float(duration))
+        exit(0)
+        print "Accuracy:", accuracy.eval(feed_dict={x: test_data, y_: test_labels})
+"""
 if __name__ == '__main__':
     tf.app.run()
