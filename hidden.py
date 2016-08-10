@@ -1,4 +1,4 @@
-import tensorflow.python.platform
+#!/usr/bin/env python
 
 import numpy as np
 import tensorflow as tf
@@ -58,6 +58,7 @@ def init_weights(shape, init_method='xavier', xavier_params = (None, None)):
         return tf.Variable(tf.random_uniform(shape, minval=low, maxval=high, dtype=tf.float32))
     
 def main(argv=None):
+  with tf.Graph().as_default():
     # Be verbose?
     verbose = FLAGS.verbose
     
@@ -121,31 +122,25 @@ def main(argv=None):
     saver = tf.train.Saver(tf.all_variables())
 
     # Create a local session to run this computation.
-    with tf.Session() as s:
-        # Run all the initializers to prepare the trainable parameters.
-    	tf.initialize_all_variables().run()
-    	if verbose:
-            print ('num epochs: %s train size %s batchsize %s'%(num_epochs, train_size, BATCH_SIZE))
-    	    print 'Initialized!'
-    	    print
-    	    print 'Training.'
-    	    
+    sess = tf.Session()
+      # Run all the initializers to prepare the trainable parameters.
+    init_var = tf.initialize_all_variables()
+    sess.run(init_var)
+
     	# Iterate and train.
-    	for step in xrange(num_epochs * train_size // BATCH_SIZE):
-    	    if verbose:
-    	        print step
-    	        
-            offset = (step * BATCH_SIZE) % train_size
-            batch_data = train_data[offset:(offset + BATCH_SIZE), :]
-            batch_labels = train_labels[offset:(offset + BATCH_SIZE)]
-            train_step.run(feed_dict={x: batch_data, y_: batch_labels})
-            if verbose and offset >= train_size-BATCH_SIZE:
-                print
-            start_time = time.time()
-            saver.save(s, "/tmp/%s-simple-ckpt-model.ckpt"%num_hidden, global_step=step)
-            duration = time.time() - start_time
-            print("second per checkpoint: %s"%float(duration))
-            exit(0)
+    for step in xrange(num_epochs * train_size // BATCH_SIZE):
+        print step
+        offset = (step * BATCH_SIZE) % train_size
+        batch_data = train_data[offset:(offset + BATCH_SIZE), :]
+        batch_labels = train_labels[offset:(offset + BATCH_SIZE)]
+        sess.run(train_step, feed_dict={x: batch_data, y_: batch_labels})
+        start_time = time.time()
+#        saver.save(sess, "/tmp/%s-simple-ckpt-model.ckpt"%num_hidden, global_step=step)
+        saver.save(sess, "/run/shm/%s-simple-ckpt-model.ckpt"%num_hidden, global_step=step)
+        duration = time.time() - start_time
+        print("second per checkpoint: %s"%float(duration))
+        break
+    sess.close()
 """
         start_time = time.time()
         saver.save(s, "/tmp/%s-simple-ckpt-model.ckpt"%num_hidden, global_step=step)
